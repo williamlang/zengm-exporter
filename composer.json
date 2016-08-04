@@ -1,0 +1,19 @@
+{
+    "name": "lang/zengm",
+    "description": "Convert Zen GM exports to CSV",
+    "authors": [
+        {
+            "name": "William Lang",
+            "email": "william@icydata.hockey"
+        }
+    ],
+    "require": {
+        "league/csv": "^8.1"
+    },
+    "autoload": {
+        "psr-0": {
+            "Lang": "lib/"
+        },
+    //   "files": []
+    }
+}
