@@ -8,12 +8,12 @@
         }
     ],
     "require": {
-        "league/csv": "^8.1"
+        "league/csv": "^8.1",
+        "symfony/console": "^3.1"
     },
     "autoload": {
         "psr-0": {
             "Lang": "lib/"
-        },
-    //   "files": []
+        }
     }
 }
