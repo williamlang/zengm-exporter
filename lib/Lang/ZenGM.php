@@ -25,6 +25,10 @@ class ZenGM {
         self::TEAMS   => array('seasons', 'stats')
     );
 
+    /**
+     * Represents the unique identifier for each exported object
+     * @var array
+     */
     private static $exportObjectId = array(
         self::PLAYERS => 'pid',
         self::TEAMS   => 'tid'
