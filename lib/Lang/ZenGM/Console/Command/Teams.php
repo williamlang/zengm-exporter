@@ -32,7 +32,7 @@ class Teams extends SymfonyCommand {
     protected function execute(InputInterface $input, OutputInterface $output) {
         try {
             $z = new ZenGM($input->getArgument('file'));
-            $z->exportTeams();
+            $z->exportObject(ZenGM::TEAMS);
         } catch (\Exception $e) {
             $output->writeln($e->getMessage());
         }

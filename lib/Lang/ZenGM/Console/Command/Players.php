@@ -32,7 +32,7 @@ class Players extends SymfonyCommand {
     protected function execute(InputInterface $input, OutputInterface $output) {
         try {
             $z = new ZenGM($input->getArgument('file'));
-            $z->exportPlayers();
+            $z->exportObject(ZenGM::PLAYERS);
         } catch (\Exception $e) {
             $output->writeln($e->getMessage());
         }
