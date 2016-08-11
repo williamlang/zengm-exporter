@@ -7,6 +7,7 @@ use League\Csv\Reader;
 
 class ZenGM {
 
+    const META    = 'meta';
     const PLAYERS = 'players';
     const TEAMS   = 'teams';
 
@@ -35,6 +36,15 @@ class ZenGM {
     );
 
     /**
+     * Whether or not the export object has season dependencies for historical purposes
+     * @var array
+     */
+    private static $exportObjectSeasonDependencies = array(
+        self::PLAYERS => true,
+        self::TEAMS   => false
+    );
+
+    /**
      * The path to the ZenGM export
      * @var string
      */
@@ -57,26 +67,83 @@ class ZenGM {
             throw new \Exception("File $file does not exist.");
         }
 
-        $this->jsonData = json_decode(file_get_contents($this->file), true);
+        $this->jsonData   = json_decode(file_get_contents($this->file), true);
+        $this->leagueName = preg_replace('/[^a-z0-9]/i', '_', $this->jsonData[self::META]['name']);
+        $dir              = sprintf("%s/../../data/%s/", __DIR__, $this->leagueName);
+        if (!is_dir($dir)) {
+            mkdir($dir);
+        }
     }
 
     /**
      * Export the given property to a CSV file, this is mainly used for debugging
      * @return void
      */
-    public function export() {
+    public function export($object = null) {
+        $seasons = $this->getSeasons();
+        $seasons = $this->exportSeasons($seasons);
 
-        foreach (self::$exportObjects as $object) {
-            $this->exportObject($object);
+        if (empty($object)) {
+            foreach (self::$exportObjects as $object) {
+                $this->exportObject($object, $seasons);
+            }
+        } else {
+            $this->exportObject($object, $seasons);
         }
 
         // $this->exportTeams();
         // $this->exportPlayers();
     }
 
-    public function exportObject($object) {
+    /**
+     * Export seasons, assign a season id
+     * @param  array $seasons
+     * @return array
+     */
+    private function exportSeasons($seasons) {
+        $dir = sprintf("%s/../../data/%s/", __DIR__, $this->leagueName);
+
+        $headers = array(
+            'sid'  => 'sid',
+            'year' => 'year'
+        );
+
+        $objects = array();
+
+        foreach ($seasons as $seasonYear) {
+            $sid = sizeof($objects) + 1;
+            $objects[$seasonYear] = array('sid' => $sid, 'year' => $seasonYear);
+        }
+
+        $this->exportArray($headers, $objects, sprintf('%s/%s.csv', $dir, 'seasons'));
+        return $objects;
+    }
+
+    /**
+     * Get the current season for objects that need this for historical purposes
+     * @return int
+     */
+    private function getSeasons() {
+        $startSeason = date("Y", time());
+        $endSeason   = 0;
+
+        $stats = $this->jsonData[self::TEAMS][0]['stats'];
+        foreach ($stats as $stat) {
+            $startSeason = min($startSeason, $stat['season']);
+            $endSeason   = max($endSeason, $stat['season']);
+        }
+
+        return range($startSeason, $endSeason);
+    }
+
+    /**
+     * Generic method to export an object to CSV
+     * @param  string $object
+     * @return void
+     */
+    public function exportObject($object, $seasons) {
         $records = $this->jsonData[$object];
-        $dir    = __DIR__ . '/../../data/';
+        $dir     = sprintf("%s/../../data/%s/", __DIR__, $this->leagueName);
 
         $objects = array();
         $headers = array();
@@ -101,14 +168,22 @@ class ZenGM {
         $dataHeaders = array();
         $properties  = self::$exportObjectProperties[$object];
         $idColumn    = self::$exportObjectId[$object];
+        $seasonDep   = self::$exportObjectSeasonDependencies[$object];
 
         foreach ($properties as $property) {
             $data[$property] = array();
             $dataHeaders[$property] = array($idColumn => $idColumn);
 
             foreach ($records as $i => $record) {
+
+                if ($seasonDep && isset($record[$property]['season'])) {
+                    $recordNo = md5($i . $record[$property]['season']);
+                } else {
+                    $recordNo = $i;
+                }
+
                 $idColumnValue = $objects[$i][$idColumn];
-                $data[$property][$idColumnValue] = array($idColumn => $idColumnValue);
+                $data[$property][$recordNo] = array($idColumn => $idColumnValue);
 
                 foreach ($record[$property] as $k => $propertyData) {
                     if (is_array($propertyData)) {
@@ -121,13 +196,14 @@ class ZenGM {
                                 $propertyValue = ""; //implode(',', $propertyValue); // for the skills data
                             }
 
-                            $data[$property][$idColumnValue][$propertyName] = $propertyValue;
+                            $data[$property][$recordNo][$propertyName] = $propertyValue;
                         }
                     } else {
                         if (!array_key_exists($k, $dataHeaders)) {
                             $dataHeaders[$property][$k] = $k;
                         }
-                        $data[$property][$idColumnValue][$k] = $propertyData;
+
+                        $data[$property][$recordNo][$k] = $propertyData;
                     }
                 }
             }
@@ -144,7 +220,7 @@ class ZenGM {
      * @return void
      */
     private function exportArray($headers, $data, $fileName) {
-        $csv = Writer::createFromPath($fileName, 'w+');
+        $csv = Writer::createFromPath($fileName, 'a+');
         array_unshift($data, $headers);
         $csv->insertAll($data);
     }
