@@ -14,6 +14,7 @@
     "autoload": {
         "psr-0": {
             "Lang": "lib/"
-        }
+        },
+        "files": ["timezone.php"]
     }
 }
